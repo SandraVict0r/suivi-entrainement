@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Suivi entraînement</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f2f7; --card: #ffffff; --sep: #e2e2e7; --fill: #ececf1; --bar: rgba(242,242,247,.8);
+  --text: #000000; --text-2: #55555b; --text-3: #85858b;
+  --course: #2a78d6; --force: #eb6834; --cardio: #1baf7a; --autre: #eda100;
+  --accent: #0071e3; --ok: #1f9d4d; --badge-bg: #fff1dc; --badge-text: #7a4a00;
+  --ombre: 0 1px 2px rgba(0,0,0,.04);
+  --ease: cubic-bezier(.32,.72,0,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #000000; --card: #1c1c1e; --sep: #303034; --fill: #2c2c2e; --bar: rgba(0,0,0,.72);
+    --text: #ffffff; --text-2: #b9b9bf; --text-3: #8e8e93;
+    --course: #3987e5; --force: #d95926; --cardio: #199e70; --autre: #c98500;
+    --accent: #0a84ff; --ok: #30d158; --badge-bg: #3a2a10; --badge-text: #f1c98a;
+    --ombre: none;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+body.fige { overflow: hidden; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-3); font-size: 13px; }
+.card { background: var(--card); border-radius: 16px; box-shadow: var(--ombre); }
+svg { display: block; }
+
+/* Verrou */
+#verrou { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+#verrou form { width: 100%; max-width: 340px; padding: 28px 24px 24px; }
+#verrou h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.02em; }
+#verrou input { width: 100%; margin: 18px 0 12px; padding: 13px 14px; border-radius: 12px; border: 0; background: var(--fill); }
+.bouton { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 600; transition: opacity .15s; }
+.bouton:active { opacity: .7; }
+.bouton.second { background: var(--card); color: var(--accent); margin-top: 16px; box-shadow: var(--ombre); }
+#erreur { color: #d70015; font-size: 14px; min-height: 20px; margin: 10px 0 0; }
+
+/* Barre du haut */
+header { position: sticky; top: 0; z-index: 10; background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+header > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(8px + env(safe-area-inset-top)) 16px 8px; max-width: 712px; margin: 0 auto; }
+#burger { width: 40px; height: 40px; margin-left: -8px; border: 0; background: none; border-radius: 50%; display: grid; place-items: center; padding: 0; color: var(--accent); transition: background .15s; }
+#burger:active { background: var(--fill); }
+#burger svg { width: 22px; height: 22px; }
+.seg { display: inline-flex; background: var(--fill); border-radius: 10px; padding: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 16px; border-radius: 8px; color: var(--text); font-weight: 500; font-size: 14px; transition: background .2s, box-shadow .2s; }
+.seg button[aria-pressed="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+@media (prefers-color-scheme: dark) { .seg button[aria-pressed="true"] { background: #636366; } }
+
+main { max-width: 712px; margin: 0 auto; padding: 0 16px calc(48px + env(safe-area-inset-bottom)); }
+.grand { font-size: 32px; font-weight: 700; letter-spacing: -.025em; margin: 6px 0 14px; line-height: 1.15; }
+h2 { font-size: 20px; font-weight: 700; letter-spacing: -.015em; margin: 30px 0 10px; }
+h2 + .muted { margin: -6px 0 10px; }
+section { animation: entree .35s var(--ease); }
+@keyframes entree { from { opacity: 0; transform: translateY(8px); } }
+
+/* Menu latéral */
+#voile, .f-voile { position: fixed; inset: 0; background: rgba(0,0,0,.36); opacity: 0; transition: opacity .3s; }
+#voile { z-index: 20; }
+#voile.ouvert, .ouvert > .f-voile { opacity: 1; }
+#menu { position: fixed; top: 0; bottom: 0; left: 0; width: 280px; max-width: 84vw; z-index: 30; background: var(--card); display: flex; flex-direction: column; padding: calc(22px + env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom)); transform: translateX(-104%); transition: transform .4s var(--ease), visibility .4s; visibility: hidden; box-shadow: 0 0 40px rgba(0,0,0,.18); }
+#menu.ouvert { transform: none; visibility: visible; }
+#menu .marque { font-size: 22px; font-weight: 700; letter-spacing: -.02em; padding: 4px 12px 16px; }
+#menu nav { display: flex; flex-direction: column; gap: 2px; }
+#menu nav button { display: flex; align-items: center; gap: 12px; text-align: left; border: 0; background: none; padding: 11px 12px; border-radius: 12px; font-size: 17px; transition: background .15s; }
+#menu nav button svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+#menu nav button:active { background: var(--fill); }
+#menu nav button[aria-current="page"] { background: var(--fill); font-weight: 600; }
+#menu .pied { margin-top: auto; padding: 0 12px; }
+#menu .pied button { background: none; border: 0; padding: 8px 0 0; color: var(--accent); font-size: 14px; text-align: left; }
+@media (min-width: 1040px) {
+  #menu { transform: none; visibility: visible; box-shadow: none; border-right: 1px solid var(--sep); }
+  #voile, #burger { display: none !important; }
+  #page { margin-left: 280px; }
+}
+
+/* Programme : semaine */
+.nav-sem { display: flex; align-items: center; gap: 8px; }
+.nav-sem > div { flex: 1; min-width: 0; }
+.nav-sem .grand { margin: 0; }
+.nav-sem .muted { font-size: 15px; margin-top: 2px; }
+.rond { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--fill); display: grid; place-items: center; padding: 0; color: var(--accent); transition: opacity .15s, transform .15s; }
+.rond:active { transform: scale(.92); }
+.rond:disabled { opacity: .3; cursor: default; color: var(--text-3); }
+.rond svg { width: 9px; height: 15px; }
+.lien { background: none; border: 0; color: var(--accent); font-size: 15px; padding: 8px 0 0; }
+.bilan { margin-top: 16px; padding: 16px; display: flex; align-items: center; gap: 16px; }
+.bilan .anneau { flex: none; width: 64px; height: 64px; }
+.bilan .anneau circle { fill: none; stroke-width: 7; stroke-linecap: round; }
+.bilan .anneau .fond { stroke: var(--fill); }
+.bilan .anneau .arc { stroke: var(--ok); transition: stroke-dashoffset .6s var(--ease); }
+.bilan .anneau text { fill: var(--text); font-size: 15px; font-weight: 700; text-anchor: middle; }
+.bilan b { display: block; font-size: 17px; letter-spacing: -.01em; }
+.bilan .muted { font-size: 14px; margin-top: 2px; }
+.jour-tete { display: flex; align-items: baseline; gap: 8px; margin: 26px 4px 8px; font-size: 15px; color: var(--text-3); }
+.jour-tete b { color: var(--text); font-size: 17px; font-weight: 600; text-transform: capitalize; }
+.jour-tete.auj b { color: var(--accent); }
+.rien { margin: 0 4px; font-size: 15px; color: var(--text-3); }
+
+/* Lignes de séance */
+.liste { overflow: hidden; }
+.ligne { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 0; padding: 11px 14px 11px 12px; position: relative; transition: background .15s; }
+.ligne:active { background: var(--fill); }
+.ligne + .ligne::before { content: ""; position: absolute; top: 0; left: 64px; right: 0; height: 1px; background: var(--sep); }
+.picto { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.picto svg { width: 22px; height: 22px; }
+.jour { width: 40px; text-align: center; line-height: 1.1; }
+.jour b { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.jour span { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .02em; }
+.titre { font-weight: 600; font-size: 16px; letter-spacing: -.01em; overflow-wrap: anywhere; line-height: 1.3; }
+.stats { font-size: 14px; color: var(--text-2); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--badge-bg); color: var(--badge-text); white-space: nowrap; margin-top: 4px; }
+.droite { display: flex; align-items: center; gap: 8px; color: var(--text-3); }
+.droite .chev { width: 7px; height: 12px; opacity: .6; }
+.fait { width: 22px; height: 22px; color: var(--ok); }
+.etat { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.etat.afaire { color: #fff; background: var(--accent); padding: 3px 10px; border-radius: 999px; }
+.etat.manque { color: var(--text-3); font-weight: 500; }
+.ligne.discret .titre { font-weight: 500; color: var(--text-2); }
+
+/* Séances faites */
+.filtres { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
+.filtres::-webkit-scrollbar { display: none; }
+.filtres button { flex: none; border: 0; background: var(--card); border-radius: 999px; padding: 7px 15px; font-size: 15px; transition: background .2s, color .2s; box-shadow: var(--ombre); }
+.filtres button[aria-pressed="true"] { background: var(--text); color: var(--bg); font-weight: 600; }
+.semaine { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 26px 4px 8px; }
+.semaine b { font-size: 17px; font-weight: 600; }
+.semaine span { text-align: right; font-size: 14px; }
+.vide { padding: 20px 16px; color: var(--text-3); font-size: 15px; }
+
+/* Statistiques */
+.tuiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.tuile { padding: 14px 16px; }
+.tuile span { font-size: 14px; color: var(--text-2); font-weight: 500; }
+.tuile b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tuile b small { font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--text-2); }
+.tuile em { display: block; font-style: normal; font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.bloc { padding: 16px; position: relative; }
+.bloc + .bloc { margin-top: 10px; }
+.bloc h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.bloc h3 + .muted { margin: 1px 0 10px; font-size: 14px; }
+.legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 6px; font-size: 13px; color: var(--text-2); }
+.legende i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.trace svg { width: 100%; height: auto; overflow: visible; }
+.trace text { fill: var(--text-3); font-size: 11px; }
+.trace .grille { stroke: var(--sep); stroke-width: 1; }
+.trace .zone-survol { fill: transparent; cursor: pointer; outline: none; }
+.trace .zone-survol:hover, .trace .zone-survol.actif { fill: var(--text); fill-opacity: .06; }
+.bulle { position: absolute; pointer-events: none; background: var(--text); color: var(--bg); font-size: 13px; padding: 8px 11px; border-radius: 10px; z-index: 5; min-width: 130px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.bulle b { display: block; margin-bottom: 2px; }
+.bulle div { display: flex; justify-content: space-between; gap: 14px; }
+.cal { display: grid; grid-template-columns: 54px repeat(7, 1fr); gap: 5px; align-items: center; margin-top: 12px; }
+.cal .ent { font-size: 11px; color: var(--text-3); text-align: center; font-weight: 600; }
+.cal .sem { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.cal button { height: 26px; border-radius: 7px; border: 0; padding: 0; background: var(--fill); transition: transform .15s; }
+.cal button:active, .cal button.actif { transform: scale(.86); }
+.cal button.actif { outline: 2px solid var(--text); outline-offset: 1px; }
+.cal button.n1 { background: color-mix(in srgb, var(--cardio) 32%, var(--fill)); }
+.cal button.n2 { background: color-mix(in srgb, var(--cardio) 58%, var(--fill)); }
+.cal button.n3 { background: color-mix(in srgb, var(--cardio) 82%, var(--fill)); }
+.cal button.n4 { background: var(--cardio); }
+.cal button.futur { background: none; box-shadow: inset 0 0 0 1px var(--sep); }
+.cal button.auj { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-pied { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--text-2); min-height: 20px; }
+.cal-pied .ech { display: flex; align-items: center; gap: 4px; color: var(--text-3); flex: none; }
+.cal-pied .ech i { width: 12px; height: 12px; border-radius: 4px; }
+.rang { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; padding: 9px 0; }
+.rang + .rang { border-top: 1px solid var(--sep); }
+.rang .nom { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.rang .nom i { width: 10px; height: 10px; border-radius: 3px; }
+.rang .val { font-size: 15px; color: var(--text-2); font-variant-numeric: tabular-nums; text-align: right; grid-column: 3; }
+.rang .jauge { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--fill); overflow: hidden; }
+.rang .jauge i { display: block; height: 100%; border-radius: 4px; min-width: 2px; transition: width .5s var(--ease); }
+.rec { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; }
+.rec + .rec { border-top: 1px solid var(--sep); }
+.rec span { font-size: 15px; }
+.rec span small { display: block; font-size: 13px; color: var(--text-3); }
+.rec b { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.rec > span { flex: 1; min-width: 0; }
+.rec .delta { display: block; font-size: 13px; font-weight: 600; color: var(--text-3); }
+.rec .delta.mieux { color: var(--ok); }
+.rec .spark { flex: none; width: 64px; height: 24px; align-self: center; overflow: visible; }
+.rec .spark polyline { fill: none; stroke: var(--force); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.rec .spark circle { fill: var(--force); }
+
+/* Fiche d'une séance (feuille) */
+#feuille { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.f-panneau { position: relative; width: 100%; max-width: 640px; max-height: calc(100% - 28px - env(safe-area-inset-top)); background: var(--bg); border-radius: 18px 18px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform .45s var(--ease); box-shadow: 0 -8px 40px rgba(0,0,0,.2); }
+.ouvert > .f-panneau { transform: none; }
+.f-barre { display: flex; justify-content: flex-end; padding: 10px 12px 0; position: relative; }
+.f-barre::before { content: ""; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--sep); }
+#f-fermer { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill); display: grid; place-items: center; padding: 0; color: var(--text-2); }
+#f-fermer svg { width: 12px; height: 12px; }
+.f-corps { overflow-y: auto; overscroll-behavior: contain; padding: 0 16px calc(32px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+.f-date { font-size: 14px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .03em; }
+.f-titre { font-size: 26px; font-weight: 700; letter-spacing: -.025em; line-height: 1.18; margin: 4px 0 8px; overflow-wrap: anywhere; }
+.f-etat { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 15px; color: var(--text-2); }
+.f-etat .ok { display: inline-flex; align-items: center; gap: 5px; color: var(--ok); font-weight: 600; }
+.f-etat .ok svg { width: 18px; height: 18px; }
+.f-etat .badge { margin: 0; }
+.mesures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 10px; padding: 16px; margin-top: 16px; }
+.mesures span { display: block; font-size: 13px; color: var(--text-3); }
+.mesures b { font-size: 21px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.mesures b small { font-size: 13px; font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+.f-corps h3 { font-size: 13px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .03em; margin: 22px 4px 8px; }
+.f-corps .card { padding: 14px 16px; font-size: 15px; }
+.zones { display: flex; gap: 2px; height: 14px; border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+.zones i { background: var(--course); min-width: 0; }
+.defile { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 15px; }
+th { text-align: right; font-weight: 500; color: var(--text-3); font-size: 13px; padding: 0 0 6px 10px; white-space: nowrap; }
+td { text-align: right; padding: 7px 0 7px 10px; border-top: 1px solid var(--sep); }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+.props { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; margin: 0; }
+.props dt, .props dd { padding: 7px 0; border-top: 1px solid var(--sep); margin: 0; }
+.props dt { color: var(--text-3); }
+.props dd { overflow-wrap: anywhere; white-space: pre-wrap; text-align: right; }
+.props dt:first-of-type, .props dt:first-of-type + dd { border-top: 0; padding-top: 0; }
+.props dt:last-of-type, .props dd:last-of-type { padding-bottom: 0; }
+.consignes > :first-child { margin-top: 0; }
+.consignes > :last-child { margin-bottom: 0; }
+.consignes p, .consignes ul, .consignes ol, .consignes blockquote { margin: 8px 0; }
+.consignes ul, .consignes ol { padding-left: 22px; }
+.consignes li { margin: 5px 0; }
+.consignes blockquote { padding: 10px 12px; background: var(--fill); border-radius: 10px; color: var(--text-2); font-size: 14px; }
+.consignes h5 { margin: 18px 0 6px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.consignes .sous { margin: 14px 0 2px; font-size: 15px; font-weight: 600; }
+.consignes table td, .consignes table th { text-align: left; padding: 7px 10px 7px 0; vertical-align: top; }
+
+/* Déroulé de la séance */
+.deroule .desc { font-size: 14px; color: var(--text-2); padding-bottom: 10px; }
+.deroule > * + * { border-top: 1px solid var(--sep); }
+.etape { display: grid; grid-template-columns: 4px 1fr auto; gap: 1px 12px; padding: 10px 0; align-items: start; }
+.etape + .etape { border-top: 1px solid var(--sep); }
+.etape .barre { grid-row: 1 / span 2; align-self: stretch; border-radius: 2px; min-height: 22px; }
+.etape .nom { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.etape .qte { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.etape .cible { grid-column: 2 / -1; font-size: 14px; color: var(--text-2); }
+.rep { padding: 12px 0; }
+.rep-tete { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 8px; }
+.rep-corps { background: var(--fill); border-radius: 12px; padding: 0 12px; }
+.rep-corps .etape + .etape { border-color: color-mix(in srgb, var(--text-3) 30%, transparent); }
+.deroule > :first-child { padding-top: 0; }
+.deroule > :last-child { padding-bottom: 0; }
+
+/* Formulaire de retour */
+.form .champ { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--sep); }
+.form .champ:first-child { border-top: 0; padding-top: 0; }
+.form .champ.haut { display: block; }
+.form label { font-size: 15px; }
+.form input[type="text"], .form select, .form textarea { border: 0; background: var(--fill); border-radius: 10px; padding: 8px 10px; font-size: 16px; min-width: 0; }
+.form input.court { width: 104px; text-align: right; flex: none; }
+.form select { max-width: 62%; }
+.form textarea, .form input.large { display: block; width: 100%; margin-top: 6px; }
+.form textarea { min-height: 84px; resize: vertical; line-height: 1.35; }
+.bascule { appearance: none; -webkit-appearance: none; flex: none; width: 51px; height: 31px; border-radius: 16px; background: var(--fill); position: relative; margin: 0; cursor: pointer; transition: background .25s; }
+.bascule::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .25s var(--ease); }
+.bascule:checked { background: var(--ok); }
+.bascule:checked::after { transform: translateX(20px); }
+.form .bouton { margin-top: 14px; }
+.form .bouton:disabled { opacity: .5; }
+.form-msg { font-size: 14px; color: var(--text-2); margin: 10px 0 0; text-align: center; }
+.form-msg:empty { display: none; }
+
+@media (min-width: 700px) {
+  #feuille { align-items: center; }
+  .f-panneau { border-radius: 18px; max-height: 88%; transform: translateY(24px) scale(.98); opacity: 0; transition: transform .3s var(--ease), opacity .25s; }
+  .ouvert > .f-panneau { opacity: 1; }
+  .f-barre::before { display: none; }
+  .tuiles { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 360px) { .seg button { padding: 6px 11px; } .grand { font-size: 28px; } .mesures b { font-size: 19px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="verrou">
+  <form class="card" id="form">
+    <h1>Suivi entraînement</h1>
+    <div class="muted">Page privée. Entre le mot de passe pour voir les données.</div>
+    <input id="mdp" type="password" autocomplete="current-password" placeholder="Mot de passe" aria-label="Mot de passe" required>
+    <button type="submit" id="ouvrir" class="bouton">Ouvrir</button>
+    <p id="erreur" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <div id="voile" hidden></div>
+  <aside id="menu" aria-label="Menu">
+    <div class="marque">Suivi</div>
+    <nav id="vues"></nav>
+    <div class="pied">
+      <div class="muted" id="maj"></div>
+      <button id="quitter" type="button">Verrouiller sur cet appareil</button>
+    </div>
+  </aside>
+
+  <div id="page">
+    <header><div>
+      <button id="burger" type="button" aria-label="Ouvrir le menu" aria-expanded="false">
+        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+      </button>
+      <div class="seg" id="athletes" role="group" aria-label="Athlète"></div>
+    </div></header>
+
+    <main>
+      <section id="vue-programme" hidden>
+        <div class="nav-sem">
+          <div><h1 class="grand" id="sem-nom"></h1><div class="muted" id="sem-dates"></div></div>
+          <button class="rond" id="sem-prec" type="button" aria-label="Semaine précédente"></button>
+          <button class="rond" id="sem-suiv" type="button" aria-label="Semaine suivante"></button>
+        </div>
+        <button id="sem-auj" class="lien" type="button" hidden>Revenir à cette semaine</button>
+        <div class="card bilan" id="bilan"></div>
+        <div id="jours"></div>
+      </section>
+
+      <section id="vue-journal" hidden>
+        <h1 class="grand">Séances faites</h1>
+        <div class="filtres" id="filtres" role="group" aria-label="Filtrer par sport"></div>
+        <div id="faites"></div>
+        <button class="bouton second" id="plus" type="button" hidden>Voir les semaines précédentes</button>
+      </section>
+
+      <section id="vue-stats" hidden>
+        <h1 class="grand">Statistiques</h1>
+        <h2 style="margin-top:0">Cette semaine</h2>
+        <div class="tuiles" id="tuiles"></div>
+
+        <h2>Progression</h2>
+        <div class="muted" id="prog-sous"></div>
+        <div class="card bloc" id="progression"></div>
+        <div class="card bloc" id="g-eq">
+          <h3>Course à effort égal</h3><div class="muted" id="eq-sous"></div>
+          <div class="trace"></div>
+        </div>
+        <div class="card bloc">
+          <h3>Force : charges par exercice</h3><div class="muted">Charge la plus lourde de chaque séance, d'après les séries enregistrées par la montre</div>
+          <div id="charges"></div>
+        </div>
+
+        <h2>Régularité</h2>
+        <div class="card bloc">
+          <h3 id="cal-titre"></h3>
+          <div class="cal" id="cal"></div>
+          <div class="cal-pied"><span id="cal-info">Touche un jour pour voir le détail.</span>
+            <span class="ech">Moins <i style="background:var(--fill)"></i><i style="background:color-mix(in srgb,var(--cardio) 32%,var(--fill))"></i><i style="background:color-mix(in srgb,var(--cardio) 58%,var(--fill))"></i><i style="background:color-mix(in srgb,var(--cardio) 82%,var(--fill))"></i><i style="background:var(--cardio)"></i> Plus</span></div>
+        </div>
+
+        <h2>Tendance sur 8 semaines</h2>
+        <div class="card bloc" id="g-temps">
+          <h3>Temps d'entraînement</h3><div class="muted">Par semaine, par type de séance</div>
+          <div class="legende" id="legende"></div>
+          <div class="trace"></div>
+        </div>
+        <div class="card bloc" id="g-km">
+          <h3>Kilomètres de course</h3><div class="muted">Par semaine</div>
+          <div class="trace"></div>
+        </div>
+        <div class="card bloc" id="g-allure">
+          <h3>Allure moyenne en course</h3><div class="muted">Par semaine, en min/km (plus haut = plus rapide)</div>
+          <div class="trace"></div>
+        </div>
+        <div class="card bloc" id="g-suivi">
+          <h3>Suivi du programme</h3><div class="muted">Séances prévues faites, par semaine</div>
+          <div id="suivi"></div>
+        </div>
+
+        <h2>Sur la période</h2>
+        <div class="seg" id="periodes" role="group" aria-label="Période" style="margin-bottom:12px"></div>
+        <div class="card bloc"><h3>Répartition par type</h3><div class="muted" id="rep-sous"></div><div id="repartition"></div></div>
+        <div class="card bloc"><h3>Temps par zone cardiaque</h3><div class="muted" id="zones-sous"></div><div id="zones"></div></div>
+        <div class="card bloc"><h3>Totaux</h3><div class="muted" id="tot-sous"></div><div id="totaux"></div></div>
+
+        <h2>Records</h2>
+        <div class="muted" id="rec-sous"></div>
+        <div class="card bloc" id="records"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="feuille" hidden>
+    <div class="f-voile"></div>
+    <div class="f-panneau" role="dialog" aria-modal="true" aria-labelledby="f-titre">
+      <div class="f-barre"><button id="f-fermer" type="button" aria-label="Fermer">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1 1l10 10M11 1L1 11"/></svg></button></div>
+      <div class="f-corps" id="f-corps"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const CATS = [["course", "Course"], ["force", "Force"], ["cardio", "Cardio"], ["autre", "Autre"]];
+const VUES = [["programme", "Programme", "cal"], ["journal", "Séances faites", "liste"], ["stats", "Statistiques", "barres"]];
+const JOURS = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."];
+const JOURS_LONGS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const ICONES = { // tracés fixes (24×24, trait)
+  course: '<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4l2.5 2M10 3.5h4"/>',
+  force: '<path d="M3.5 9.5v5M7 6.5v11M17 6.5v11M20.5 9.5v5M7 12h10"/>',
+  cardio: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.500 15.4 12 20 12 20z"/>',
+  autre: '<path d="M3 12h4l2.500-6 4 12 2.500-6h5"/>',
+  repos: '<path d="M19.500 14.500A8 8 0 1 1 9.500 4.500a6.500 6.500 0 0 0 10 10z"/>',
+  cal: '<rect x="3.500" y="5" width="17" height="15" rx="3"/><path d="M3.500 10h17M8 3v4M16 3v4"/>',
+  liste: '<path d="M8.500 7h11M8.500 12h11M8.500 17h11"/><path d="M4.500 7h.01M4.500 12h.01M4.500 17h.01" stroke-width="2.600"/>',
+  barres: '<path d="M5 20v-7M12 20V5M19 20v-10"/>',
+};
+const CHEVRON = '<svg class="chev" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l5 5-5 5"/></svg>';
+const COCHE = '<svg class="fait" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M6.500 11.300l3 3 6-6.300" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const $ = (id) => document.getElementById(id);
+let DATA = null, athlete = null, vue = "programme", semaine = null, filtre = "tout", semainesVisibles = 4, periode = 4;
+
+/* ---------- Stockage local (facultatif) ---------- */
+const mem = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+/* ---------- Déchiffrement ---------- */
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function dechiffrer(enc, mdp) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(mdp), "PBKDF2", false, ["deriveKey"]);
+  const cle = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(enc.sel), iterations: enc.iter, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const clair = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(enc.iv) }, cle, b64(enc.ct));
+  return JSON.parse(new TextDecoder().decode(clair));
+}
+async function ouvrir(mdp, silencieux) {
+  $("erreur").textContent = "";
+  $("ouvrir").disabled = true;
+  try {
+    const r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("donnees");
+    const enc = await r.json();
+    try { DATA = await dechiffrer(enc, mdp); } catch { throw new Error("mdp"); }
+    mem.set("suivi-mdp", mdp);
+    demarrer();
+  } catch (e) {
+    mem.del("suivi-mdp");
+    if (!silencieux || e.message !== "mdp")
+      $("erreur").textContent = e.message === "mdp" ? "Mot de passe incorrect." : "Données indisponibles pour le moment. Réessaie plus tard.";
+  } finally { $("ouvrir").disabled = false; }
+}
+$("form").addEventListener("submit", (e) => { e.preventDefault(); ouvrir($("mdp").value); });
+$("quitter").addEventListener("click", () => { mem.del("suivi-mdp"); location.reload(); });
+// Lien d'accès : …/#cle=motdepasse ouvre la page une fois, puis l'appareil s'en souvient.
+const cleLien = new URLSearchParams(location.hash.slice(1)).get("cle");
+if (cleLien) { history.replaceState(null, "", location.pathname); ouvrir(cleLien); }
+else if (mem.get("suivi-mdp")) ouvrir(mem.get("suivi-mdp"), true);
+
+/* ---------- Formats ---------- */
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const html = (code) => { const t = document.createElement("template"); t.innerHTML = code; return t.content.firstChild; }; // uniquement pour les icônes fixes ci-dessus
+const icone = (nom) => html(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[nom] || ICONES.autre}</svg>`);
+const nb = (x, d = 0) => x.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+function hms(s) {
+  if (s == null) return "–";
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
+}
+function duree(s) { // durée lisible : 1 h 22, 45 min
+  const m = Math.round((s || 0) / 60), h = Math.floor(m / 60);
+  return h ? `${h} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
+}
+const km = (m) => nb((m || 0) / 1000, 2) + " km";
+const allure = (v, par = 1000) => v ? `${hms(par / v)}/${par === 1000 ? "km" : par + " m"}` : null;
+const jourDe = (iso) => { const [y, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const isoDe = (dt) => dt.toISOString().slice(0, 10);
+function lundi(iso) { const d = jourDe(iso); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return isoDe(d); }
+function plus(iso, j) { const d = jourDe(iso); d.setUTCDate(d.getUTCDate() + j); return isoDe(d); }
+const court = (iso) => { const d = jourDe(iso); return `${d.getUTCDate()} ${MOIS[d.getUTCMonth()]}`; };
+const long = (iso) => `${JOURS_LONGS[jourDe(iso).getUTCDay()]} ${court(iso)}`;
+function aujourdhui() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; }
+function stats(a) {
+  const p = [duree(a.duree)];
+  if (a.distance) {
+    p.push(km(a.distance));
+    if (a.cat === "course") p.push(allure(a.vitesse));
+    else if (a.type === "indoor_rowing") p.push(allure(a.vitesse, 500));
+    else if (a.vitesse) p.push(nb(a.vitesse * 3.6, 1) + " km/h");
+  }
+  if (a.fc) p.push(`FC ${a.fc}`);
+  return p.filter(Boolean).join(" · ");
+}
+function catDe(type) { // couleur d'une séance prévue, d'après son Type
+  const t = (type || "").toLowerCase();
+  if (t === "repos") return "repos";
+  if (/course|footing|fractionn|sortie|endurance|seuil|vma|tapis/.test(t)) return "course";
+  if (/force|muscu|renfo|gainage|abdo/.test(t)) return "force";
+  if (/hyrox|cardio|rameur|simu/.test(t)) return "cardio";
+  return "autre";
+}
+const acts = () => DATA.athletes[athlete].activites;
+const prog = () => DATA.athletes[athlete].programme || [];
+const jourAct = (a) => a.debut.slice(0, 10);
+function somme(liste) {
+  return { n: liste.length, duree: liste.reduce((s, a) => s + (a.duree || 0), 0),
+           km: liste.filter((a) => a.cat === "course").reduce((s, a) => s + (a.distance || 0), 0) / 1000 };
+}
+function suivi(l) { // séances du programme d'une semaine : prévues (jusqu'à aujourd'hui) et faites
+  const auj = aujourdhui(), depuis = DATA.athletes[athlete].depuis || "";
+  const p = prog().filter((s) => lundi(s.date) === l && s.type !== "Repos");
+  const connu = p.every((s) => s.date >= depuis || s.aid);
+  return { total: p.length, faites: p.filter((s) => s.aid).length, echues: p.filter((s) => s.date <= auj).length, connu };
+}
+
+/* ---------- Démarrage, menu ---------- */
+function menu(ouvert) {
+  if (ouvert) $("voile").hidden = false;
+  requestAnimationFrame(() => { $("menu").classList.toggle("ouvert", ouvert); $("voile").classList.toggle("ouvert", ouvert); });
+  if (!ouvert) setTimeout(() => { if (!$("menu").classList.contains("ouvert")) $("voile").hidden = true; }, 320);
+  $("burger").setAttribute("aria-expanded", String(ouvert));
+}
+function montrer(v) {
+  vue = v; mem.set("suivi-vue", v);
+  for (const [c] of VUES) $("vue-" + c).hidden = c !== v;
+  for (const b of $("vues").children) { if (b.dataset.vue === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
+  menu(false);
+  rendre();
+  scrollTo(0, 0);
+}
+function segment(conteneur, choix, actif, surChoix) {
+  conteneur.textContent = "";
+  for (const [c, nom] of choix) {
+    const b = el("button", "", nom); b.type = "button"; b.setAttribute("aria-pressed", String(c === actif()));
+    b.addEventListener("click", () => { surChoix(c); for (const x of conteneur.children) x.setAttribute("aria-pressed", String(x === b)); });
+    conteneur.append(b);
+  }
+}
+function demarrer() {
+  $("verrou").hidden = true;
+  $("app").hidden = false;
+  const cles = Object.keys(DATA.athletes);
+  athlete = cles.includes(mem.get("suivi-athlete")) ? mem.get("suivi-athlete") : cles[0];
+  segment($("athletes"), cles.map((c) => [c, DATA.athletes[c].nom]), () => athlete,
+          (c) => { athlete = c; mem.set("suivi-athlete", c); semainesVisibles = 4; semaine = null; rendre(); });
+  segment($("periodes"), [[4, "4 semaines"], [8, "8 semaines"]], () => periode, (c) => { periode = c; rendrePeriode(); });
+  for (const [c, nom, ic] of VUES) {
+    const b = el("button"); b.type = "button"; b.dataset.vue = c; b.append(icone(ic), nom);
+    b.addEventListener("click", () => montrer(c));
+    $("vues").append(b);
+  }
+  $("sem-prec").append(html(CHEVRON)); $("sem-prec").firstChild.style.transform = "scaleX(-1)";
+  $("sem-suiv").append(html(CHEVRON));
+  $("burger").addEventListener("click", () => menu(!$("menu").classList.contains("ouvert")));
+  $("voile").addEventListener("click", () => menu(false));
+  addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (!$("feuille").hidden) history.back(); else menu(false); });
+  $("sem-prec").addEventListener("click", () => { semaine = plus(semaine, -7); rendreProgramme(); });
+  $("sem-suiv").addEventListener("click", () => { semaine = plus(semaine, 7); rendreProgramme(); });
+  $("sem-auj").addEventListener("click", () => { semaine = null; rendreProgramme(); });
+  segmentFiltres();
+  const leg = $("legende");
+  for (const [c, nom] of CATS) { const s = el("span"); const i = el("i"); i.style.background = `var(--${c})`; s.append(i, nom); leg.append(s); }
+  $("plus").addEventListener("click", () => { semainesVisibles += 6; rendreFaites(); });
+  $("f-fermer").addEventListener("click", () => history.back());
+  $("feuille").querySelector(".f-voile").addEventListener("click", () => history.back());
+  addEventListener("popstate", () => fermerFiche());
+  const [d, h] = DATA.maj.split(" ");
+  $("maj").textContent = `Mis à jour le ${court(d)} à ${h.replace(":", " h ")}`;
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => { if (vue === "stats") rendreGraphes(); }, 150); });
+  montrer(VUES.some(([c]) => c === mem.get("suivi-vue")) ? mem.get("suivi-vue") : "programme");
+}
+function segmentFiltres() {
+  const f = $("filtres");
+  for (const [c, nom] of [["tout", "Tout"], ...CATS]) {
+    const b = el("button", "", nom); b.type = "button"; b.dataset.cat = c;
+    b.addEventListener("click", () => { filtre = c; rendreFaites(); });
+    f.append(b);
+  }
+}
+function rendre() {
+  if (vue === "programme") rendreProgramme();
+  else if (vue === "journal") rendreFaites();
+  else rendreStats();
+}
+
+/* ---------- Ligne de séance (commune au programme et au journal) ---------- */
+function ligne({ cat, titre, sous, etat, badge, tete, discret, fiche }) {
+  const b = el("button", "ligne" + (discret ? " discret" : "")), t = el("div");
+  b.type = "button";
+  t.append(el("div", "titre", titre));
+  if (sous) t.append(el("div", "stats", sous));
+  if (badge) t.append(el("span", "badge", badge));
+  let gauche = tete;
+  if (!gauche) { gauche = el("span", "picto"); gauche.style.setProperty("--c", cat === "repos" ? "var(--text-3)" : `var(--${cat})`); gauche.append(icone(cat)); }
+  const dr = el("div", "droite");
+  if (etat === "fait") { const c = html(COCHE); c.setAttribute("role", "img"); c.setAttribute("aria-label", "Fait"); c.removeAttribute("aria-hidden"); dr.append(c); }
+  else if (etat) dr.append(el("span", "etat " + etat[0], etat[1]));
+  dr.append(html(CHEVRON));
+  b.append(gauche, t, dr);
+  b.addEventListener("click", () => ouvrirFiche(fiche));
+  return b;
+}
+
+/* ---------- Programme ---------- */
+const propDe = (pid, re) => DATA.athletes[athlete].pages?.[pid]?.props.find(([n]) => re.test(n))?.[1];
+function rendreProgramme() {
+  const A = DATA.athletes[athlete], auj = aujourdhui(), l0 = lundi(auj);
+  const lundis = [...prog().map((s) => s.date), ...acts().map((a) => a.debut), auj].map(lundi).sort();
+  const min = lundis[0], max = lundis[lundis.length - 1];
+  if (!semaine) semaine = l0;
+  if (semaine < min) semaine = min;
+  if (semaine > max) semaine = max;
+  $("sem-prec").disabled = semaine <= min;
+  $("sem-suiv").disabled = semaine >= max;
+  $("sem-auj").hidden = semaine === l0;
+  $("sem-nom").textContent = semaine === l0 ? "Cette semaine" : semaine === plus(l0, 7) ? "Semaine prochaine" : semaine === plus(l0, -7) ? "Semaine dernière" : `Semaine du ${court(semaine)}`;
+  $("sem-dates").textContent = `Du ${court(semaine)} au ${court(plus(semaine, 6))}`;
+
+  const parId = new Map(acts().map((a) => [a.id, a]));
+  const prevues = prog().filter((s) => lundi(s.date) === semaine);
+  const liees = new Set(prevues.map((s) => s.aid).filter(Boolean));
+  const libres = acts().filter((a) => lundi(a.debut) === semaine && !liees.has(a.id));
+  const sv = suivi(semaine);
+  const realise = [...prevues.map((s) => parId.get(s.aid)).filter(Boolean), ...libres];
+
+  // Bilan de la semaine : anneau d'avancement
+  const bilan = $("bilan"); bilan.textContent = "";
+  const R = 26, tour = 2 * Math.PI * R, part = sv.total ? sv.faites / sv.total : 0;
+  bilan.append(html(`<svg class="anneau" viewBox="0 0 64 64" role="img" aria-label="${sv.faites} séances faites sur ${sv.total}"><circle class="fond" cx="32" cy="32" r="${R}"/><circle class="arc" cx="32" cy="32" r="${R}" transform="rotate(-90 32 32)" stroke-dasharray="${tour}" stroke-dashoffset="${tour}" ${part ? "" : 'stroke-opacity="0"'}/><text x="32" y="37">${sv.total ? sv.faites + "/" + sv.total : "–"}</text></svg>`));
+  requestAnimationFrame(() => bilan.querySelector(".arc")?.setAttribute("stroke-dashoffset", tour * (1 - part)));
+  const txt = el("div");
+  txt.append(el("b", "", !sv.total ? "Aucune séance au programme" : sv.faites === sv.total ? "Programme de la semaine terminé" : `${pluriel(sv.faites, "séance")} ${sv.faites > 1 ? "faites" : "faite"} sur ${sv.total}`));
+  const s = somme(realise), bouts = [];
+  if (s.n) bouts.push(duree(s.duree));
+  if (s.km) bouts.push(`${nb(s.km, 1)} km de course`);
+  if (libres.length) bouts.push(`${libres.length} en plus du programme`);
+  txt.append(el("div", "muted", bouts.join(" · ") || "Rien d'enregistré pour l'instant"));
+  bilan.append(txt);
+
+  // Jour par jour
+  const box = $("jours"); box.textContent = "";
+  for (let j = 0; j < 7; j++) {
+    const iso = plus(semaine, j), d = jourDe(iso);
+    const tete = el("div", "jour-tete" + (iso === auj ? " auj" : ""));
+    tete.append(el("b", "", iso === auj ? "Aujourd'hui" : JOURS_LONGS[d.getUTCDay()]), el("span", "", iso === auj ? long(iso) : court(iso)));
+    box.append(tete);
+    const carte = el("div", "card liste");
+    for (const sc of prevues.filter((x) => x.date === iso)) {
+      const a = sc.aid ? parId.get(sc.aid) : null, repos = sc.type === "Repos";
+      let etat = null;
+      if (sc.aid) etat = "fait";
+      else if (repos) etat = null;
+      else if (iso === auj) etat = ["afaire", "À faire"];
+      else if (iso < auj && iso >= (A.depuis || "")) etat = ["manque", "Non fait"];
+      let prevu = propDe(sc.page, /dur[ée]e/i);
+      if (prevu && /^\d+([.,]\d+)?$/.test(prevu)) prevu += " min"; // durée notée en nombre seul
+      const sous = a ? stats(a) : [sc.type, propDe(sc.page, /moment/i), prevu].filter(Boolean).join(" · ");
+      carte.append(ligne({ cat: a ? a.cat : catDe(sc.type), titre: sc.titre, sous, etat, discret: repos,
+                           fiche: { sc, a, etat: sc.aid ? "fait" : etat?.[1] } }));
+    }
+    for (const a of libres.filter((x) => jourAct(x) === iso).reverse())
+      carte.append(ligne({ cat: a.cat, titre: a.titre, sous: stats(a), badge: a.prevu === false ? "Hors programme" : null, fiche: { a } }));
+    if (carte.children.length) box.append(carte);
+    else box.append(el("div", "rien", "Rien de prévu"));
+  }
+}
+
+/* ---------- Séances faites ---------- */
+function bloc(iso) {
+  const d = jourDe(iso), j = el("div", "jour");
+  j.append(el("b", "", d.getUTCDate()), el("span", "", JOURS[d.getUTCDay()]));
+  return j;
+}
+function rendreFaites() {
+  for (const b of $("filtres").children) b.setAttribute("aria-pressed", b.dataset.cat === filtre);
+  const box = $("faites"); box.textContent = "";
+  const liste = acts().filter((a) => filtre === "tout" || a.cat === filtre);
+  const parSemaine = new Map();
+  for (const a of liste) { const l = lundi(a.debut); if (!parSemaine.has(l)) parSemaine.set(l, []); parSemaine.get(l).push(a); }
+  const cles = [...parSemaine.keys()].sort().reverse();
+  if (!cles.length) box.append(el("div", "card vide", "Aucune séance pour ce filtre."));
+  for (const l of cles.slice(0, semainesVisibles)) {
+    const s = somme(parSemaine.get(l)), tete = el("div", "semaine");
+    tete.append(el("b", "", l === lundi(aujourdhui()) ? "Cette semaine" : `Semaine du ${court(l)}`),
+                el("span", "muted", `${pluriel(s.n, "séance")} · ${duree(s.duree)}${s.km ? " · " + nb(s.km, 1) + " km" : ""}`));
+    const carte = el("div", "card liste");
+    for (const a of parSemaine.get(l))
+      carte.append(ligne({ cat: a.cat, titre: a.titre, sous: stats(a), tete: bloc(a.debut),
+                           badge: a.prevu === false ? "Hors programme" : null, fiche: { a } }));
+    box.append(tete, carte);
+  }
+  $("plus").hidden = cles.length <= semainesVisibles;
+}
+
+/* ---------- Fiche d'une séance ---------- */
+function ouvrirFiche(f) {
+  const c = $("f-corps"); c.textContent = ""; remplirFiche(c, f); c.scrollTop = 0;
+  $("feuille").hidden = false; document.body.classList.add("fige");
+  requestAnimationFrame(() => requestAnimationFrame(() => $("feuille").classList.add("ouvert")));
+  history.pushState({ fiche: 1 }, "");
+  $("f-fermer").focus({ preventScroll: true });
+}
+function fermerFiche() {
+  if ($("feuille").hidden) return;
+  $("feuille").classList.remove("ouvert"); document.body.classList.remove("fige");
+  setTimeout(() => { if (!$("feuille").classList.contains("ouvert")) $("feuille").hidden = true; }, 420);
+}
+function grouper(series) { // séries identiques qui se suivent : « 3 × 0:45 »
+  const out = [];
+  for (const s of series) {
+    const cle = [s.nom, s.reps, s.reps ? "" : s.duree, s.kg].join("|"), d = out[out.length - 1];
+    if (d && d.cle === cle) d.n++; else out.push({ cle, n: 1, s });
+  }
+  return out;
+}
+function tableau(entetes, lignes) {
+  const t = el("table"), h = el("tr");
+  for (const e of entetes) h.append(el("th", "", e));
+  t.append(h);
+  for (const l of lignes) { const tr = el("tr"); for (const c of l) tr.append(el("td", "", c ?? "–")); t.append(tr); }
+  const w = el("div", "defile"); w.append(t);
+  return w;
+}
+function partie(d, titre, ...contenu) { const c = el("div", "card"); c.append(...contenu); d.append(el("h3", "", titre), c); }
+function remplirFiche(d, { sc, a, etat }) {
+  const iso = sc ? sc.date : jourAct(a);
+  d.append(el("div", "f-date", long(iso) + (a ? ` · ${a.debut.slice(11).replace(":", " h ")}` : "")));
+  const t = el("h2", "f-titre", sc ? sc.titre : a.titre); t.id = "f-titre"; d.append(t);
+  const e = el("div", "f-etat");
+  if (etat === "fait") { const ok = el("span", "ok"); ok.append(html(COCHE), "Fait"); ok.firstChild.setAttribute("class", ""); e.append(ok); }
+  else if (etat) e.append(el("span", "", etat));
+  const genre = a ? a.sport : sc.type;
+  if (genre) e.append(el("span", "", (e.children.length ? "· " : "") + genre));
+  if (a && a.prevu === false) e.append(el("span", "badge", "Hors programme"));
+  d.append(e);
+
+  if (a) {
+    const m = el("div", "card mesures");
+    const mesure = (nom, val, unite) => { if (val == null || val === "") return; const x = el("div"), b = el("b", "", val); if (unite) b.append(el("small", "", " " + unite)); x.append(el("span", "", nom), b); m.append(x); };
+    mesure("Durée", hms(a.duree));
+    if (a.distance) mesure("Distance", nb(a.distance / 1000, 2), "km");
+    if (a.distance && a.vitesse) {
+      if (a.cat === "course") mesure("Allure", hms(1000 / a.vitesse), "/km");
+      else if (a.type === "indoor_rowing") mesure("Allure", hms(500 / a.vitesse), "/500 m");
+      else mesure("Vitesse", nb(a.vitesse * 3.6, 1), "km/h");
+    }
+    mesure("FC moyenne", a.fc, "bpm");
+    mesure("FC max", a.fc_max, "bpm");
+    mesure("Calories", a.calories, "kcal");
+    if (a.denivele) mesure("Dénivelé", a.denivele, "m");
+    d.append(m);
+
+    const tz = (a.zones || []).reduce((s, z) => s + z, 0);
+    if (tz > 0) {
+      const bar = el("div", "zones");
+      a.zones.forEach((z, i) => { if (z > 0) { const seg = el("i"); seg.style.flex = z; seg.style.opacity = 0.28 + 0.18 * i; bar.append(seg); } });
+      partie(d, "Zones cardiaques", bar, tableau(["Zone", "Temps", "Part"], a.zones.map((z, i) => [`Zone ${i + 1}`, hms(z), nb(100 * z / tz) + " %"])));
+    }
+    if (a.rameur?.length)
+      partie(d, "Rameur Concept2", tableau(["Heure", "Durée", "Distance", "/500 m", "FC"], a.rameur.map((r) => [r.heure, hms(r.duree), km(r.distance), allure(r.vitesse, 500)?.split("/")[0], r.fc])));
+    const laps = (a.laps || []).filter((l, i, t) => !(i === t.length - 1 && l.duree < 30 && t.length > 1)); // dernier lap de quelques secondes : ignoré
+    if (laps.length > 1)
+      partie(d, "Laps", tableau(["#", "Durée", "Distance", "Allure", "FC"], laps.map((l, i) => [i + 1, hms(l.duree), km(l.distance), allure(l.vitesse)?.split("/")[0], l.fc])));
+    if (a.series?.length)
+      partie(d, "Séries", tableau(["Exercice", "Séries", "Charge"], grouper(a.series).map(({ n, s }) =>
+        [s.nom, `${n} × ${s.reps ? s.reps + " reps" : hms(s.duree)}`, s.kg ? nb(s.kg, s.kg % 1 ? 1 : 0) + " kg" : s.kg === 0 ? "PDC" : "–"])));
+  }
+
+  const pid = sc ? sc.page : a.page, page = DATA.athletes[athlete].pages?.[pid];
+  const cat = a ? a.cat : catDe(sc.type);
+  if (!a) { // séance pas encore faite : le déroulé d'abord, puis l'envoi sur la montre
+    deroule(d, page?.montre, cat);
+    if (page?.montre && iso >= aujourdhui()) envoiMontre(d, pid, page);
+  }
+  const saisie = !!page && iso <= aujourdhui() && formulaire(d, pid, page);
+  if (a) deroule(d, page?.montre, cat);
+  if (page?.props.length) {
+    const dl = el("dl", "props");
+    for (const [nom, val] of page.props) dl.append(el("dt", "", nom), el("dd", "", val));
+    partie(d, "Infos", dl);
+  }
+  if (page?.blocs.length) {
+    const c = el("div", "consignes"); let liste = null;
+    for (const b of page.blocs) {
+      if (b.t === "li" || b.t === "ol") {
+        const tag = b.t === "li" ? "UL" : "OL";
+        if (!liste || liste.tagName !== tag) { liste = el(tag.toLowerCase()); c.append(liste); }
+        liste.append(el("li", "", b.x)); continue;
+      }
+      liste = null;
+      if (b.t === "h2") c.append(el("h5", "", b.x));
+      else if (b.t === "h3") c.append(el("div", "sous", b.x));
+      else if (b.t === "q") c.append(el("blockquote", "", b.x));
+      else if (b.t === "p") c.append(el("p", "", b.x));
+      else if (b.t === "table" && b.lignes.length && !(b.saisie && saisie)) { // tableau à remplir : il est dans le formulaire
+        const tb = el("table");
+        b.lignes.forEach((l, i) => { const tr = el("tr"); for (const x of l) tr.append(el(i ? "td" : "th", "", x)); tb.append(tr); });
+        const w = el("div", "defile"); w.append(tb); c.append(w);
+      }
+    }
+    if (c.children.length) partie(d, "Consignes de la séance", c);
+  } else if (!a) d.append(el("p", "muted", "Pas de consignes écrites pour cette séance."));
+}
+
+/* ---------- Formulaire de retour : la page lance un workflow GitHub qui écrit dans Notion ---------- */
+function attente() { try { return JSON.parse(mem.get("suivi-retours") || "{}"); } catch { return {}; } }
+async function lancer(pid, donnees, envoyer) { // lance le workflow « retour-seance » ; erreur si refusé
+  const R = DATA.retour;
+  const r = await fetch(`https://api.github.com/repos/${R.depot}/actions/workflows/${R.workflow}/dispatches`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${R.jeton}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+    body: JSON.stringify({ ref: R.branche, inputs: { page: pid, donnees: JSON.stringify(donnees), envoyer: envoyer ? "oui" : "non" } }),
+  });
+  if (!r.ok) throw new Error(String(r.status));
+}
+
+/* ---------- Déroulé de la séance, d'après le bloc écrit pour la montre ---------- */
+const NOMS_ETAPES = { echauffement: "Échauffement", intervalle: "Effort", recuperation: "Récupération", retour_au_calme: "Retour au calme", repos: "Repos" };
+const temps = (v) => typeof v === "number" ? hms(v) : String(v); // « 10:00 » sans guillemets est lu comme 600 secondes
+const plage = (v, f = String) => Array.isArray(v) ? (v.length > 1 && v[0] !== v[1] ? `${f(v[0])} à ${f(v[1])}` : f(v[0])) : f(v);
+function etape(e, couleur) {
+  if (!e || typeof e !== "object") return el("div");
+  if (e.type === "repeter") {
+    const r = el("div", "rep"), c = el("div", "rep-corps");
+    r.append(el("div", "rep-tete", `À faire ${e.fois ?? "?"} fois`));
+    for (const x of e.etapes || []) c.append(etape(x, couleur));
+    r.append(c); return r;
+  }
+  const calme = ["echauffement", "retour_au_calme", "recuperation", "repos"].includes(e.type);
+  const r = el("div", "etape"), b = el("span", "barre");
+  b.style.background = calme ? "var(--text-3)" : couleur; if (calme) b.style.opacity = ".4";
+  const fois = e.series ? `${e.series} × ` : "";
+  let qte = "";
+  if (e.reps != null) qte = `${fois}${e.reps} reps`;
+  else if (e.duree != null) qte = fois + temps(e.duree);
+  else if (e.distance_m != null) qte = e.distance_m >= 1000 ? nb(e.distance_m / 1000, e.distance_m % 1000 ? 2 : 0) + " km" : e.distance_m + " m";
+  else if (e.lap) qte = fois + "Lap";
+  const cibles = [];
+  if (e.exercice && e.type === "echauffement") cibles.push("échauffement");
+  if (e.allure_km) cibles.push(plage(e.allure_km, temps) + " /km");
+  if (e.vitesse_kmh) cibles.push(plage(e.vitesse_kmh, (x) => nb(Number(x), 1)) + " km/h");
+  if (e.fc_bpm) cibles.push("FC " + plage(e.fc_bpm));
+  if (e.charge_kg != null) cibles.push(nb(Number(e.charge_kg), Number(e.charge_kg) % 1 ? 1 : 0) + " kg");
+  if (e.repos != null) cibles.push("repos " + temps(e.repos));
+  r.append(b, el("span", "nom", e.exercice || NOMS_ETAPES[e.type] || "Étape"), el("span", "qte", qte));
+  const sous = [cibles.join(" · "), e.note].filter(Boolean).join(" — ");
+  if (sous) r.append(el("div", "cible", sous));
+  return r;
+}
+function deroule(d, montre, cat) {
+  if (!Array.isArray(montre?.etapes) || !montre.etapes.length) return;
+  const c = el("div", "deroule");
+  if (montre.description) c.append(el("div", "desc", String(montre.description)));
+  for (const e of montre.etapes) c.append(etape(e, `var(--${cat === "repos" ? "autre" : cat})`));
+  partie(d, montre.duree_estimee != null ? `Déroulé · ${temps(montre.duree_estimee)}` : "Déroulé", c);
+}
+function envoiMontre(d, pid, page) { // bouton « Envoyer sur la montre » : coche la case dans Notion et lance la synchro
+  const att = attente(), demande = page.envoi?.coche || (att[pid]?.edite === page.edite && att[pid].envoi);
+  const c = el("div"), etat = el("div", "muted"), btn = el("button", "bouton", page.envoi?.deja ? "Renvoyer sur la montre" : "Envoyer sur la montre"), msg = el("p", "form-msg");
+  etat.style.cssText = "font-size:15px;margin-bottom:12px"; msg.setAttribute("role", "status"); btn.type = "button";
+  const enAttente = () => { btn.disabled = true; btn.textContent = "Envoi demandé"; etat.textContent = "La séance arrive sur Garmin Connect d'ici quelques minutes."; };
+  etat.textContent = page.envoi?.statut || (page.envoi?.deja ? "Déjà envoyée sur Garmin Connect." : "Pas encore envoyée sur la montre.");
+  if (demande) enAttente();
+  btn.addEventListener("click", async () => {
+    if (!DATA.retour) { msg.textContent = "L'envoi n'est pas disponible sur cet aperçu."; return; }
+    btn.disabled = true; msg.textContent = "Envoi…";
+    try {
+      await lancer(pid, {}, true);
+      const a2 = attente(), avant = a2[pid]?.edite === page.edite ? a2[pid] : {};
+      a2[pid] = { ...avant, edite: page.edite, envoi: true }; mem.set("suivi-retours", JSON.stringify(a2));
+      msg.textContent = ""; enAttente();
+    } catch { btn.disabled = false; msg.textContent = "L'envoi a échoué. Vérifie ta connexion et réessaie."; }
+  });
+  c.append(etat, btn, msg);
+  partie(d, "Montre", c);
+}
+function formulaire(d, pid, page) {
+  const champs = page.retours || [], tables = page.blocs.filter((b) => b.t === "table" && b.saisie && b.ids);
+  if (!champs.length && !tables.length) return false;
+  // Retour déjà envoyé depuis cet appareil mais pas encore revenu dans les données : on le réaffiche
+  const att = attente(); let envoye = att[pid];
+  if (envoye && envoye.edite !== page.edite) { delete att[pid]; mem.set("suivi-retours", JSON.stringify(att)); envoye = null; }
+  const f = el("form", "form"), lire = []; let n = 0;
+  const champ = (nom, controle, haut) => { const r = el("div", "champ" + (haut ? " haut" : "")), l = el("label", "", nom); controle.id = `r-${n++}`; l.htmlFor = controle.id; r.append(l, controle); f.append(r); };
+  for (const c of champs) {
+    const init = envoye?.champs && c.nom in envoye.champs ? envoye.champs[c.nom] : c.val;
+    let x, valeur;
+    if (c.type === "checkbox") { x = el("input", "bascule"); x.type = "checkbox"; x.checked = !!init; valeur = () => x.checked; }
+    else if (c.type === "select") {
+      x = el("select"); x.append(new Option("—", ""));
+      for (const o of c.options || []) x.append(new Option(o, o));
+      x.value = init || ""; valeur = () => x.value;
+    } else if (c.type === "number") {
+      x = el("input", "court"); x.type = "text"; x.inputMode = "decimal"; x.autocomplete = "off";
+      x.value = init == null ? "" : String(init).replace(".", ",");
+      valeur = () => { const t = x.value.trim().replace(",", "."); if (t === "") return null; const v = Number(t); if (!isFinite(v)) throw new Error(c.nom); return v; };
+    } else { x = el("textarea"); x.value = init || ""; valeur = () => x.value.trim(); }
+    champ(c.nom, x, c.type === "rich_text");
+    lire.push({ genre: "champs", cle: c.nom, valeur, init: c.type === "rich_text" ? (init || "").trim() : c.type === "checkbox" ? !!init : c.type === "select" ? init || "" : init ?? null });
+  }
+  for (const t of tables) t.lignes.forEach((l, i) => {
+    if (t.entete && i === 0 || l.length < 2) return;
+    // une cellule écrite sur plusieurs lignes tient ici sur une seule : sans ça elle passerait pour modifiée
+    const id = t.ids[i], init = (envoye?.lignes && id in envoye.lignes ? envoye.lignes[id] : l[l.length - 1]).replace(/\s*[\r\n]+\s*/g, " ").trim();
+    const x = el("input", "large"); x.type = "text"; x.autocomplete = "off"; x.value = init;
+    champ(l.slice(0, -1).filter(Boolean).join(" · ") || "À renseigner", x, true);
+    lire.push({ genre: "lignes", cle: id, valeur: () => x.value.trim(), init });
+  });
+  const btn = el("button", "bouton", "Enregistrer"); btn.type = "submit";
+  const msg = el("p", "form-msg"); msg.setAttribute("role", "status");
+  f.append(btn, msg);
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const envoi = { champs: {}, lignes: {} }, changes = [];
+    for (const c of lire) {
+      let v; try { v = c.valeur(); } catch (err) { msg.textContent = `« ${err.message} » doit être un nombre.`; return; }
+      if (v !== c.init) { envoi[c.genre][c.cle] = v; changes.push([c, v]); }
+    }
+    if (!changes.length) { msg.textContent = "Rien de nouveau à enregistrer."; return; }
+    if (!DATA.retour) { msg.textContent = "L'enregistrement n'est pas disponible sur cet aperçu."; return; }
+    btn.disabled = true; msg.textContent = "Envoi…";
+    try {
+      await lancer(pid, envoi, false);
+      const a2 = attente(), avant = a2[pid]?.edite === page.edite ? a2[pid] : {};
+      a2[pid] = { edite: page.edite, champs: { ...avant.champs, ...envoi.champs }, lignes: { ...avant.lignes, ...envoi.lignes } };
+      mem.set("suivi-retours", JSON.stringify(a2));
+      for (const [c, v] of changes) c.init = v;
+      msg.textContent = "Enregistré. Ce sera visible partout d'ici quelques minutes.";
+    } catch { msg.textContent = "L'envoi a échoué. Vérifie ta connexion et réessaie."; }
+    finally { btn.disabled = false; }
+  });
+  d.append(el("h3", "", "Mon retour"));
+  const carte = el("div", "card"); carte.append(f); d.append(carte);
+  return true;
+}
+
+/* ---------- Statistiques ---------- */
+function rendreStats() { rendreTuiles(); rendreProgression(); rendreCalendrier(); rendreGraphes(); rendrePeriode(); rendreRecords(); }
+
+/* ---------- Statistiques : progression ---------- */
+function fcRef() { // FC habituelle en course (médiane, arrondie à 5) : sert à comparer les allures à effort égal
+  const fcs = acts().filter((a) => a.cat === "course" && a.fc && a.vitesse).map((a) => a.fc).sort((x, y) => x - y);
+  return fcs.length ? Math.round(fcs[Math.floor(fcs.length / 2)] / 5) * 5 : null;
+}
+function allureEgale(liste, ref) { // allure moyenne ramenée à la FC de référence, en secondes par km
+  let t = 0, d = 0;
+  for (const a of liste) if (a.cat === "course" && a.fc && a.vitesse && a.duree) { t += a.duree; d += a.vitesse * (ref / a.fc) * a.duree; }
+  return d > 500 ? 1000 * t / d : null;
+}
+function mesuresProgression(liste, ref) {
+  const courses = liste.filter((a) => a.cat === "course" && a.distance), s = somme(liste);
+  const tc = courses.reduce((x, a) => x + (a.duree || 0), 0), dc = courses.reduce((x, a) => x + a.distance, 0);
+  const kms = courses.flatMap((a) => a.laps || []).filter((l) => l.distance >= 900 && l.distance <= 1100 && l.duree > 60).map((l) => l.duree / (l.distance / 1000));
+  let tr = 0, dr = 0; // rameur : activités « rameur » et morceaux Concept2 des autres séances
+  for (const a of liste) for (const r of a.type === "indoor_rowing" ? [a] : a.rameur || []) if (r.distance && r.duree) { tr += r.duree; dr += r.distance; }
+  return {
+    temps: s.duree || null, seances: s.n || null, km: s.km || null,
+    allure: dc > 500 ? tc / (dc / 1000) : null, egale: ref ? allureEgale(liste, ref) : null,
+    meilleurKm: kms.length ? Math.min(...kms) : null, longue: courses.length ? Math.max(...courses.map((a) => a.distance)) / 1000 : null,
+    rameur: dr > 500 ? tr / (dr / 500) : null,
+  };
+}
+function rendreProgression() {
+  const auj = aujourdhui(), d1 = plus(auj, -27), d0 = plus(auj, -55), ref = fcRef();
+  const m = mesuresProgression(acts().filter((a) => jourAct(a) >= d1), ref);
+  const p = mesuresProgression(acts().filter((a) => jourAct(a) >= d0 && jourAct(a) < d1), ref);
+  $("prog-sous").textContent = `Les 28 derniers jours comparés aux 28 jours d'avant (du ${court(d0)} au ${court(plus(d1, -1))})`;
+  const box = $("progression"); box.textContent = "";
+  const pct = (a, b) => `${a >= b ? "+" : "−"}${nb(Math.abs(100 * (a - b) / b))} %`;
+  const ecartAllure = (a, b) => Math.abs(a - b) < 1 ? "identique" : `${hms(Math.abs(a - b))} ${a < b ? "plus rapide" : "plus lent"}`;
+  const lignes = [ // nom, clé, format, texte de l'écart, « mieux » si
+    ["Temps d'entraînement", "temps", duree, pct, (a, b) => a > b],
+    ["Séances", "seances", String, (a, b) => `${a >= b ? "+" : "−"}${Math.abs(a - b)}`, (a, b) => a > b],
+    ["Kilomètres de course", "km", (v) => nb(v, 1) + " km", pct, (a, b) => a > b],
+    ["Course la plus longue", "longue", (v) => nb(v, 1) + " km", (a, b) => `${a >= b ? "+" : "−"}${nb(Math.abs(a - b), 1)} km`, (a, b) => a > b],
+    ["Allure moyenne en course", "allure", (v) => hms(v) + "/km", ecartAllure, (a, b) => a < b - 1],
+    [`Allure à effort égal (${ref} bpm)`, "egale", (v) => hms(v) + "/km", ecartAllure, (a, b) => a < b - 1],
+    ["Meilleur kilomètre", "meilleurKm", (v) => hms(v), ecartAllure, (a, b) => a < b - 1],
+    ["Rameur, allure moyenne", "rameur", (v) => hms(v) + "/500 m", ecartAllure, (a, b) => a < b - 1],
+  ];
+  for (const [nom, cle, fmt, ecart, mieux] of lignes) {
+    if (m[cle] == null || p[cle] == null) continue;
+    const r = el("div", "rec"), s = el("span", "", nom), b = el("b", "", fmt(m[cle]));
+    s.append(el("small", "", `Avant : ${fmt(p[cle])}`));
+    const sens = mieux(m[cle], p[cle]), egal = m[cle] === p[cle] || ecart(m[cle], p[cle]) === "identique";
+    b.append(el("span", "delta" + (sens ? " mieux" : ""), egal ? "= identique" : `${sens ? "▲" : "▼"} ${ecart(m[cle], p[cle])}`));
+    r.append(s, b); box.append(r);
+  }
+  if (!box.children.length) box.append(el("div", "vide", "Pas encore assez de données : il faut des séances sur les deux périodes."));
+
+  // Charges par exercice : la plus lourde de chaque séance, de la première à la dernière
+  const parExo = new Map();
+  for (const a of acts().slice().reverse()) { // du plus ancien au plus récent
+    const maxi = new Map();
+    for (const s of a.series || []) if (s.kg > 0 && s.nom) maxi.set(s.nom, Math.max(maxi.get(s.nom) || 0, s.kg));
+    for (const [nom, kg] of maxi) { if (!parExo.has(nom)) parExo.set(nom, []); parExo.get(nom).push([jourAct(a), kg]); }
+  }
+  const ch = $("charges"); ch.textContent = "";
+  const kg = (v) => nb(v, v % 1 ? 1 : 0) + " kg";
+  for (const [nom, pts] of [...parExo].filter(([, pts]) => pts.length >= 3).sort((x, y) => y[1].length - x[1].length).slice(0, 10)) {
+    const [d0x, k0] = pts[0], [d1x, k1] = pts[pts.length - 1], vals = pts.map((x) => x[1]), lo = Math.min(...vals), hi = Math.max(...vals);
+    const r = el("div", "rec"), s = el("span", "", nom), b = el("b", "", kg(k1));
+    s.append(el("small", "", `${pts.length} séances · ${kg(k0)} le ${court(d0x)}`));
+    b.append(el("span", "delta" + (k1 > k0 ? " mieux" : ""), k1 === k0 ? "= identique" : `${k1 > k0 ? "▲ +" : "▼ −"}${kg(Math.abs(k1 - k0))}`));
+    const sp = svgEl("svg", { class: "spark", viewBox: "0 0 64 24", "aria-hidden": "true" });
+    const xy = vals.map((v, i) => [2 + 60 * i / (vals.length - 1), hi === lo ? 12 : 21 - 18 * (v - lo) / (hi - lo)]);
+    sp.append(svgEl("polyline", { points: xy.map((q) => q.join(",")).join(" ") }), svgEl("circle", { cx: xy[xy.length - 1][0], cy: xy[xy.length - 1][1], r: 3 }));
+    r.append(s, sp, b); ch.append(r);
+  }
+  if (!ch.children.length) ch.append(el("div", "vide", "Pas encore assez de séances avec des charges enregistrées (il en faut au moins 3 par exercice)."));
+}
+function rendreTuiles() {
+  const l0 = lundi(aujourdhui()), l1 = plus(l0, -7);
+  const cette = somme(acts().filter((a) => lundi(a.debut) === l0)), avant = somme(acts().filter((a) => lundi(a.debut) === l1));
+  const sv = suivi(l0), sv1 = suivi(l1);
+  const t = $("tuiles"); t.textContent = "";
+  const tuile = (nom, val, unite, prec) => { const d = el("div", "card tuile"), b = el("b", "", val); if (unite) b.append(el("small", "", " " + unite)); d.append(el("span", "", nom), b, el("em", "", prec)); t.append(d); };
+  tuile("Séances", String(cette.n), "", `${avant.n} la sem. dernière`);
+  tuile("Temps", duree(cette.duree), "", `${duree(avant.duree)} la sem. dernière`);
+  tuile("Course", nb(cette.km, 1), "km", `${nb(avant.km, 1)} km la sem. dernière`);
+  tuile("Programme", sv.total ? `${sv.faites}/${sv.total}` : "–", "", sv1.total && sv1.connu ? `${sv1.faites}/${sv1.total} la sem. dernière` : "séances faites");
+}
+function rendreCalendrier() {
+  const auj = aujourdhui(), l0 = lundi(auj), cal = $("cal"); cal.textContent = "";
+  const parJour = new Map();
+  for (const a of acts()) { const j = jourAct(a); if (!parJour.has(j)) parJour.set(j, []); parJour.get(j).push(a); }
+  cal.append(el("span"));
+  for (const j of ["L", "M", "M", "J", "V", "S", "D"]) cal.append(el("span", "ent", j));
+  let actifs = 0, jours = 0;
+  for (let w = 7; w >= 0; w--) {
+    const l = plus(l0, -7 * w);
+    cal.append(el("span", "sem", court(l)));
+    for (let j = 0; j < 7; j++) {
+      const iso = plus(l, j), liste = parJour.get(iso) || [], min = somme(liste).duree / 60;
+      const b = el("button"); b.type = "button";
+      const info = iso > auj ? `${long(iso)} : à venir` : liste.length ? `${long(iso)} : ${pluriel(liste.length, "séance")}, ${duree(min * 60)}` : `${long(iso)} : repos`;
+      b.setAttribute("aria-label", info);
+      if (iso > auj) b.className = "futur";
+      else { jours++; if (liste.length) { actifs++; b.className = min < 30 ? "n1" : min < 60 ? "n2" : min < 90 ? "n3" : "n4"; } }
+      if (iso === auj) b.classList.add("auj");
+      b.addEventListener("click", () => { cal.querySelector(".actif")?.classList.remove("actif"); b.classList.add("actif"); $("cal-info").textContent = info.charAt(0).toUpperCase() + info.slice(1); });
+      cal.append(b);
+    }
+  }
+  $("cal-titre").textContent = `${actifs} jours actifs sur ${jours}`;
+  $("cal-info").textContent = "Touche un jour pour voir le détail.";
+}
+
+function semaines8() {
+  const l0 = lundi(aujourdhui()), out = [], ref = fcRef();
+  for (let i = 7; i >= 0; i--) {
+    const l = plus(l0, -7 * i), liste = acts().filter((a) => lundi(a.debut) === l);
+    const s = { lundi: l, km: 0, allure: null }; for (const [c] of CATS) s[c] = 0;
+    let t = 0, dist = 0;
+    for (const a of liste) {
+      s[a.cat] += (a.duree || 0) / 3600;
+      if (a.cat === "course" && a.distance) { s.km += a.distance / 1000; t += a.duree || 0; dist += a.distance; }
+    }
+    if (dist > 500) s.allure = t / (dist / 1000); // secondes par km
+    s.egale = ref ? allureEgale(liste, ref) : null;
+    out.push(s);
+  }
+  return out;
+}
+function echelle(max) { // pas « rond » pour 3-4 graduations
+  const brut = max / 3 || 1, p = Math.pow(10, Math.floor(Math.log10(brut)));
+  const pas = [1, 2, 2.5, 5, 10].map((k) => k * p).find((k) => k >= brut);
+  return { pas, haut: Math.ceil(max / pas) * pas || pas };
+}
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const G = { h: 10, d: 4, b: 22, ga: 34 }, H = 170;
+function cadre(conteneur) {
+  const trace = conteneur.querySelector(".trace"); trace.textContent = "";
+  conteneur.querySelector(".bulle")?.remove();
+  const W = Math.max(280, trace.clientWidth);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": conteneur.querySelector("h3").textContent });
+  const bulle = el("div", "bulle"); bulle.hidden = true; conteneur.append(bulle);
+  trace.append(svg);
+  return { trace, svg, W, bulle };
+}
+function graduation(svg, W, y, texte) {
+  svg.append(svgEl("line", { class: "grille", x1: G.ga, x2: W - G.d, y1: y, y2: y }));
+  const t = svgEl("text", { x: G.ga - 6, y: y + 4, "text-anchor": "end" }); t.textContent = texte; svg.append(t);
+}
+function survol({ conteneur, trace, svg, W, bulle }, sem, i, cx, pasX, ySommet, lignes) {
+  const s = sem[i];
+  const lab = svgEl("text", { x: cx, y: H - 6, "text-anchor": "middle" });
+  lab.textContent = i % 2 === (sem.length - 1) % 2 || W > 520 ? court(s.lundi) : ""; svg.append(lab);
+  const zone = svgEl("rect", { class: "zone-survol", x: cx - pasX / 2, y: G.h, width: pasX, height: H - G.h - G.b, rx: 6, tabindex: 0 });
+  const voir = () => {
+    svg.querySelectorAll(".actif").forEach((z) => z.classList.remove("actif")); zone.classList.add("actif");
+    bulle.textContent = ""; bulle.append(el("b", "", `Semaine du ${court(s.lundi)}`));
+    for (const [nom, val] of lignes) { const d = el("div"); d.append(el("span", "", nom), el("span", "", val)); bulle.append(d); }
+    bulle.hidden = false;
+    const x = trace.offsetLeft + cx / W * trace.clientWidth;
+    bulle.style.left = Math.min(Math.max(8, x - bulle.offsetWidth / 2), conteneur.clientWidth - bulle.offsetWidth - 8) + "px";
+    bulle.style.top = Math.max(4, trace.offsetTop + ySommet / H * trace.clientHeight - bulle.offsetHeight - 8) + "px";
+  };
+  const cacher = () => { zone.classList.remove("actif"); bulle.hidden = true; };
+  zone.addEventListener("pointerenter", voir); zone.addEventListener("pointerleave", cacher);
+  zone.addEventListener("click", voir); zone.addEventListener("focus", voir); zone.addEventListener("blur", cacher);
+  svg.append(zone);
+}
+function barres(conteneur, sem, series, unite, fmt) {
+  const c = { conteneur, ...cadre(conteneur) }, { svg, W } = c;
+  const totaux = sem.map((s) => series.reduce((t, [k]) => t + s[k], 0));
+  const { pas, haut } = echelle(Math.max(...totaux, 0.001));
+  const y = (v) => G.h + (H - G.h - G.b) * (1 - v / haut);
+  for (let v = 0; v <= haut + 1e-9; v += pas) graduation(svg, W, y(v), nb(v, pas < 1 ? 1 : 0) + (v === 0 ? "" : unite));
+  const pasX = (W - G.ga - G.d) / sem.length, larg = Math.min(24, pasX * 0.58);
+  sem.forEach((s, i) => {
+    const cx = G.ga + pasX * (i + 0.5);
+    let cumul = 0;
+    const presents = series.filter(([k]) => s[k] > 0);
+    presents.forEach(([k], n) => {
+      const y1 = y(cumul + s[k]), y0 = y(cumul), dernier = n === presents.length - 1;
+      const h = Math.max(1, y0 - y1 - (dernier ? 0 : 2)), coul = `var(--${k === "km" ? "course" : k})`;
+      svg.append(svgEl("rect", { x: cx - larg / 2, y: y0 - h, width: larg, height: h, rx: dernier ? 4 : 0, fill: coul }));
+      if (dernier && h > 4) svg.append(svgEl("rect", { x: cx - larg / 2, y: y0 - h + 4, width: larg, height: h - 4, fill: coul }));
+      cumul += s[k];
+    });
+    const lignes = series.filter(([k]) => s[k] > 0 || series.length === 1).map(([k, nom]) => [nom, fmt(s[k])]);
+    if (series.length > 1) lignes.push(["Total", fmt(totaux[i])]);
+    survol(c, sem, i, cx, pasX, y(totaux[i]), lignes);
+  });
+}
+function courbe(conteneur, sem, cle, fmt) { // allure : axe inversé, plus rapide en haut
+  const c = { conteneur, ...cadre(conteneur) }, { svg, W } = c;
+  const vals = sem.map((s) => s[cle]).filter((v) => v != null);
+  if (!vals.length) { c.trace.textContent = ""; c.trace.append(el("div", "vide", "Pas de course sur la période.")); return; }
+  const pas = 15, bas = Math.ceil((Math.max(...vals) + 5) / pas) * pas, hautV = Math.floor((Math.min(...vals) - 5) / pas) * pas;
+  const y = (v) => G.h + (H - G.h - G.b) * ((v - hautV) / (bas - hautV));
+  const saut = Math.max(1, Math.ceil((bas - hautV) / pas / 4)) * pas;
+  for (let v = hautV; v <= bas; v += saut) graduation(svg, W, y(v), hms(v));
+  const pasX = (W - G.ga - G.d) / sem.length, pts = [];
+  sem.forEach((s, i) => { if (s[cle] != null) pts.push([G.ga + pasX * (i + 0.5), y(s[cle])]); });
+  svg.append(svgEl("polyline", { points: pts.map((p) => p.join(",")).join(" "), fill: "none", stroke: "var(--course)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  for (const [x, yy] of pts) svg.append(svgEl("circle", { cx: x, cy: yy, r: 4.5, fill: "var(--course)", stroke: "var(--card)", "stroke-width": 2 }));
+  sem.forEach((s, i) => survol(c, sem, i, G.ga + pasX * (i + 0.5), pasX, s[cle] != null ? y(s[cle]) : H / 2,
+                               [["Allure", s[cle] != null ? fmt(s[cle]) : "pas de course"], ["Distance", nb(s.km, 1) + " km"]]));
+}
+function rang(box, nom, val, part, couleur) {
+  const r = el("div", "rang"), n = el("span", "nom");
+  if (couleur) { const i = el("i"); i.style.background = couleur; n.append(i); }
+  n.append(nom);
+  const j = el("div", "jauge"), i = el("i"); i.style.width = `${Math.round(100 * part)}%`; i.style.background = couleur || "var(--ok)"; j.append(i);
+  r.append(n, el("span", "val", val), j); box.append(r);
+}
+function rendreGraphes() {
+  const sem = semaines8();
+  barres($("g-temps"), sem, CATS, " h", (v) => duree(v * 3600));
+  barres($("g-km"), sem, [["km", "Course"]], "", (v) => nb(v, 1) + " km");
+  courbe($("g-allure"), sem, "allure", (v) => hms(v) + "/km");
+  const ref = fcRef();
+  $("eq-sous").textContent = ref ? `Allure ramenée à ${ref} bpm, par semaine : si la courbe monte, tu cours plus vite pour le même effort` : "Par semaine";
+  courbe($("g-eq"), sem, "egale", (v) => hms(v) + "/km");
+  const box = $("suivi"); box.textContent = "";
+  for (const s of sem.slice().reverse()) {
+    const sv = suivi(s.lundi);
+    if (!sv.total || !sv.connu) continue;
+    rang(box, s.lundi === lundi(aujourdhui()) ? "Cette semaine" : `Semaine du ${court(s.lundi)}`, `${sv.faites} sur ${sv.total}`, sv.faites / sv.total);
+  }
+  if (!box.children.length) box.append(el("div", "vide", "Pas encore de semaine suivie."));
+}
+function rendrePeriode() {
+  const auj = aujourdhui(), debut = plus(lundi(auj), -7 * (periode - 1));
+  const liste = acts().filter((a) => jourAct(a) >= debut), tot = somme(liste);
+  const texte = `Depuis le ${court(debut)}`;
+  $("rep-sous").textContent = $("zones-sous").textContent = $("tot-sous").textContent = texte;
+
+  const rep = $("repartition"); rep.textContent = "";
+  for (const [c, nom] of CATS) {
+    const s = somme(liste.filter((a) => a.cat === c));
+    if (s.n) rang(rep, nom, `${pluriel(s.n, "séance")} · ${duree(s.duree)}`, s.duree / (tot.duree || 1), `var(--${c})`);
+  }
+  if (!rep.children.length) rep.append(el("div", "vide", "Aucune séance sur la période."));
+
+  const z = [0, 0, 0, 0, 0];
+  for (const a of liste) (a.zones || []).forEach((v, i) => { if (i < 5) z[i] += v; });
+  const tz = z.reduce((s, v) => s + v, 0), zb = $("zones"); zb.textContent = "";
+  if (!tz) zb.append(el("div", "vide", "Pas de données cardiaques sur la période."));
+  else z.forEach((v, i) => rang(zb, `Zone ${i + 1}`, `${duree(v)} · ${nb(100 * v / tz)} %`, v / Math.max(...z), `color-mix(in srgb, var(--course) ${28 + 18 * i}%, var(--fill))`));
+
+  const tb = $("totaux"); tb.textContent = "";
+  const rec = (nom, val) => { const r = el("div", "rec"); r.append(el("span", "", nom), el("b", "", val)); tb.append(r); };
+  rec("Séances", String(tot.n));
+  rec("Temps d'entraînement", duree(tot.duree));
+  rec("Moyenne par semaine", duree(tot.duree / periode));
+  rec("Kilomètres de course", nb(tot.km, 1) + " km");
+  rec("Calories dépensées", nb(liste.reduce((s, a) => s + (a.calories || 0), 0)) + " kcal");
+  const dplus = liste.reduce((s, a) => s + (a.denivele || 0), 0);
+  if (dplus) rec("Dénivelé positif", nb(dplus) + " m");
+}
+function rendreRecords() {
+  const box = $("records"); box.textContent = "";
+  const tous = acts(), courses = tous.filter((a) => a.cat === "course" && a.distance);
+  const meilleur = (liste, f) => liste.reduce((m, a) => (m == null || f(a) > f(m) ? a : m), null);
+  const rec = (nom, a, val) => { if (!a) return; const r = el("div", "rec"), s = el("span", "", nom); s.append(el("small", "", `${a.titre} · ${court(a.debut)}`)); r.append(s, el("b", "", val)); box.append(r); };
+  const longue = meilleur(courses, (a) => a.distance);
+  rec("Plus longue course", longue, longue && km(longue.distance));
+  const rapide = meilleur(courses.filter((a) => a.distance >= 3000 && a.vitesse), (a) => a.vitesse);
+  rec("Meilleure allure moyenne (3 km et plus)", rapide, rapide && allure(rapide.vitesse));
+  const duo = meilleur(tous, (a) => a.duree || 0);
+  rec("Séance la plus longue", duo, duo && duree(duo.duree));
+  const cal = meilleur(tous.filter((a) => a.calories), (a) => a.calories);
+  rec("Séance la plus dépensière", cal, cal && nb(cal.calories) + " kcal");
+  const semKm = new Map();
+  for (const a of courses) semKm.set(lundi(a.debut), (semKm.get(lundi(a.debut)) || 0) + a.distance / 1000);
+  const top = [...semKm.entries()].sort((x, y) => y[1] - x[1])[0];
+  if (top) { const r = el("div", "rec"), s = el("span", "", "Plus grosse semaine de course"); s.append(el("small", "", `Semaine du ${court(top[0])}`)); r.append(s, el("b", "", nb(top[1], 1) + " km")); box.append(r); }
+  const premier = tous.length ? jourAct(tous[tous.length - 1]) : null;
+  $("rec-sous").textContent = premier ? `Sur les données disponibles, depuis le ${court(premier)}` : "";
+  if (!box.children.length) box.append(el("div", "vide", "Pas encore de données."));
+}
+</script>
+</body>
+</html>
